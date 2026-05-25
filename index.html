@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Audience Poll</title>
+  <style>
+    /* ── RESET ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── BODY ── */
+    body {
+      background: radial-gradient(ellipse at 50% 0%, #1e1e5e 0%, #08081e 70%);
+      min-height: 100vh;
+      color: #fff;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── HEADER ── */
+    header {
+      width: 100%;
+      text-align: center;
+      padding: 24px 20px 12px;
+      border-bottom: 1px solid rgba(255, 215, 0, 0.15);
+    }
+    header img {
+      height: 72px;
+      object-fit: contain;
+      display: block;
+      margin: 0 auto 10px;
+    }
+    header h1 {
+      font-size: 1.75rem;
+      letter-spacing: 4px;
+      color: #ffd700;
+      text-shadow: 0 0 24px rgba(255, 215, 0, 0.55);
+      text-transform: uppercase;
+    }
+    header p {
+      color: #888;
+      font-size: 0.78rem;
+      letter-spacing: 2px;
+      margin-top: 4px;
+      text-transform: uppercase;
+    }
+
+    /* ── APP AREA ── */
+    #app {
+      width: 100%;
+      max-width: 560px;
+      padding: 28px 20px 80px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ══════════════════════════════════════
+       SCREEN 1 — WAITING
+    ══════════════════════════════════════ */
+    .waiting {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      text-align: center;
+    }
+    .waiting .icon {
+      font-size: 4rem;
+      animation: float 3s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-12px); }
+    }
+    .waiting h2 {
+      font-size: 1.4rem;
+      color: #ffd700;
+      letter-spacing: 2px;
+    }
+    .waiting p {
+      color: #777;
+      font-size: 0.95rem;
+      animation: blink 2.2s ease-in-out infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.25; }
+    }
+
+    /* ══════════════════════════════════════
+       SCREEN 2 — ACTIVE POLL
+    ══════════════════════════════════════ */
+    /* Timer */
+    .timer-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 30px;
+    }
+    .timer {
+      font-size: 5rem;
+      font-weight: 700;
+      line-height: 1;
+      color: #ffd700;
+      text-shadow: 0 0 32px rgba(255, 215, 0, 0.75);
+      transition: color 0.3s, text-shadow 0.3s;
+      min-width: 120px;
+      text-align: center;
+    }
+    .timer.urgent {
+      color: #ff4040;
+      text-shadow: 0 0 32px rgba(255, 60, 60, 0.9);
+      animation: shake 0.25s linear;
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25%       { transform: translateX(-5px); }
+      75%       { transform: translateX(5px); }
+    }
+    .timer-label {
+      font-size: 0.72rem;
+      letter-spacing: 3px;
+      color: #666;
+      text-transform: uppercase;
+      margin-top: 6px;
+    }
+
+    /* Option buttons */
+    .options-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      width: 100%;
+    }
+    .opt-btn {
+      position: relative;
+      padding: 22px 14px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      letter-spacing: 3px;
+      border: 2px solid #ffd700;
+      border-radius: 12px;
+      background: rgba(255, 215, 0, 0.06);
+      color: #fff;
+      cursor: pointer;
+      overflow: hidden;
+      transition: background 0.15s, transform 0.12s, border-color 0.2s;
+    }
+    .opt-btn::after {               /* ripple shimmer on hover */
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,215,0,0.18) 0%, transparent 60%);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .opt-btn:hover:not(:disabled)::after  { opacity: 1; }
+    .opt-btn:hover:not(:disabled)         { transform: translateY(-3px); }
+    .opt-btn:active:not(:disabled)        { transform: scale(0.96); }
+    .opt-btn:disabled                     { opacity: 0.38; cursor: not-allowed; transform: none; }
+    .opt-btn.selected {
+      border-color: #00e676;
+      background:   rgba(0, 230, 118, 0.14);
+      opacity: 1 !important;
+    }
+
+    /* Feedback message */
+    .msg {
+      display: none;
+      margin-top: 20px;
+      padding: 10px 22px;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      text-align: center;
+      width: 100%;
+    }
+    .msg.success { background: rgba(0,230,118,0.11); color: #00e676; border: 1px solid rgba(0,230,118,0.28); }
+    .msg.error   { background: rgba(255,64,64,0.11);  color: #ff6b6b; border: 1px solid rgba(255,64,64,0.28); }
+    .msg.info    { background: rgba(255,215,0,0.08);  color: #ffd700; border: 1px solid rgba(255,215,0,0.25); }
+
+    /* ══════════════════════════════════════
+       SCREEN 3 — RESULTS
+    ══════════════════════════════════════ */
+    .results { width: 100%; }
+
+    .results-title {
+      text-align: center;
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #ffd700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 30px;
+    }
+
+    .bar-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .bar-label {
+      width: 26px;
+      font-size: 1rem;
+      font-weight: 700;
+      color: #ffd700;
+      text-align: right;
+      flex-shrink: 0;
+    }
+    .bar-track {
+      flex: 1;
+      position: relative;
+      background: rgba(255, 255, 255, 0.07);
+      border-radius: 8px;
+      height: 42px;
+      overflow: hidden;
+    }
+    /* percentage text — always readable, sits above the fill */
+    .bar-pct {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #fff;
+      z-index: 2;
+      pointer-events: none;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+    }
+    .bar-fill {
+      position: absolute;
+      top: 0; left: 0; bottom: 0;
+      background: linear-gradient(90deg, #e6a800, #ffd700, #ffec60);
+      border-radius: 8px;
+      width: 0%;                            /* animated from JS */
+      transition: width 1.3s cubic-bezier(0.22, 0.61, 0.36, 1);
+      z-index: 1;
+    }
+    .bar-count {
+      width: 56px;
+      text-align: left;
+      color: #888;
+      font-size: 0.82rem;
+      flex-shrink: 0;
+      line-height: 1.3;
+    }
+    .total-line {
+      text-align: center;
+      color: #555;
+      font-size: 0.8rem;
+      letter-spacing: 1px;
+      margin-top: 22px;
+      text-transform: uppercase;
+    }
+
+    /* ══════════════════════════════════════
+       MASTER BUTTON  (fixed bottom-right)
+    ══════════════════════════════════════ */
+    .master-wrap {
+      position: fixed;
+      bottom: 22px;
+      right: 22px;
+    }
+    .reset-btn {
+      padding: 14px 26px;
+      background: linear-gradient(135deg, #ff4444, #b80000);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      cursor: pointer;
+      box-shadow: 0 4px 22px rgba(255, 60, 60, 0.5);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .reset-btn:hover    { transform: translateY(-2px); box-shadow: 0 6px 28px rgba(255,60,60,0.7); }
+    .reset-btn:active   { transform: scale(0.96); }
+    .reset-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 460px) {
+      header h1          { font-size: 1.3rem; }
+      .timer             { font-size: 3.8rem; }
+      .options-grid      { grid-template-columns: 1fr; }
+      .opt-btn           { padding: 18px; }
+      .results-title     { font-size: 1.1rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <img src="kbc.png" alt="KBC" onerror="this.style.display='none'" />
+    <h1>Audience Poll</h1>
+    <p>50 : 50 Lifeline</p>
+  </header>
+
+  <!-- All screens render here -->
+  <div id="app"></div>
+
+  <!-- Master controls — hidden for regular clients -->
+  <div class="master-wrap" id="masterWrap" style="display:none">
+    <button class="reset-btn" id="resetBtn" onclick="resetPoll()">🔄 Start New Poll</button>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       Firebase SDK  (compat build — no bundler needed)
+  ════════════════════════════════════════════════════ -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <script>
+    /* ═══════════════════════════════════════════════════════
+       🔧  STEP 1 — Paste your Firebase project config here
+           (Firebase Console → Project Settings → Your apps)
+    ═══════════════════════════════════════════════════════ */
+const firebaseConfig = {
+  apiKey: "AIzaSyBPddjD8phw2uGLNrnHsWSBNG5wkW7ecwI",
+  authDomain: "audience-poll-94fc2.firebaseapp.com",
+  databaseURL: "https://audience-poll-94fc2-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "audience-poll-94fc2",
+  storageBucket: "audience-poll-94fc2.firebasestorage.app",
+  messagingSenderId: "683601529031",
+  appId: "1:683601529031:web:bc3d4fdfec5a086a3096e2"
+};
+
+    /* ═══════════════════════════════════════════════════════
+       CONSTANTS  — tweak here if needed
+    ═══════════════════════════════════════════════════════ */
+    const POLL_DURATION_MS = 30_000;          // 30 seconds
+    const OPTIONS          = ['A', 'B', 'C', 'D'];
+
+    /* ═══════════════════════════════════════════════════════
+       INIT
+    ═══════════════════════════════════════════════════════ */
+    firebase.initializeApp(firebaseConfig);
+    const db      = firebase.database();
+    const pollRef = db.ref('poll');
+
+    // Is this the master device?
+    const isMaster = new URLSearchParams(window.location.search).has('master');
+    if (isMaster) document.getElementById('masterWrap').style.display = 'block';
+
+    // Runtime state
+    let timerInterval  = null;
+    let currentPollId  = null;
+    let renderedScreen = null;   // 'waiting' | 'active' | 'results'
+    let renderedPollId = null;   // which pollId is currently on screen
+
+    /* ═══════════════════════════════════════════════════════
+       FIREBASE LISTENER  ← single source of truth
+       Fires on every database change in real time
+    ═══════════════════════════════════════════════════════ */
+    pollRef.on('value', snap => {
+      const data = snap.val();
+
+      // First-ever run — DB is empty
+      if (!data) {
+        if (isMaster) initDB();
+        else          renderWaiting();
+        return;
+      }
+
+      currentPollId     = data.pollId    ?? 0;
+      const endTime     = data.pollEndTime ?? 0;
+      const now         = Date.now();
+
+      if (endTime === 0) {
+        // No poll started yet
+        if (renderedScreen !== 'waiting') renderWaiting();
+
+      } else if (now < endTime) {
+        // Poll is live — only render/restart if it's a NEW poll
+        if (renderedScreen !== 'active' || renderedPollId !== currentPollId) {
+          renderActive(data, endTime);
+        }
+        // else: already showing correct active screen, timer is ticking — do nothing
+
+      } else {
+        // Poll ended — show results (re-render if poll changed)
+        if (renderedScreen !== 'results' || renderedPollId !== currentPollId) {
+          renderResults(data.votes ?? {});
+        }
+      }
+    });
+
+    /* ═══════════════════════════════════════════════════════
+       SCREEN 1 — WAITING
+    ═══════════════════════════════════════════════════════ */
+    function renderWaiting() {
+      stopTimer();
+      renderedScreen = 'waiting';
+      renderedPollId = null;
+      setHTML(`
+        <div class="waiting">
+          <div class="icon">🎯</div>
+          <h2>Get Ready!</h2>
+          <p>Waiting for the poll to start…</p>
+        </div>`);
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       SCREEN 2 — ACTIVE POLL
+    ═══════════════════════════════════════════════════════ */
+    function renderActive(data, endTime) {
+      stopTimer();
+      renderedScreen = 'active';
+      renderedPollId = data.pollId;
+
+      const alreadyVoted  = localStorage.getItem('votedPollId') === String(data.pollId);
+      const votedOption   = localStorage.getItem('votedOption');
+
+      setHTML(`
+        <div class="timer-wrap">
+          <div class="timer" id="timerDisplay">--</div>
+          <div class="timer-label">seconds remaining</div>
+        </div>
+
+        <div class="options-grid">
+          ${OPTIONS.map(o => `
+            <button
+              class="opt-btn${(alreadyVoted && votedOption === o) ? ' selected' : ''}"
+              id="btn${o}"
+              onclick="castVote('${o}')"
+              ${alreadyVoted ? 'disabled' : ''}>
+              ${o}
+            </button>`).join('')}
+        </div>
+
+        <div class="msg" id="msg"></div>`);
+
+      if (alreadyVoted) showMsg(`You voted  ${votedOption} ✓`, 'info');
+
+      // ── Countdown ticker ──────────────────────────────
+      timerInterval = setInterval(() => {
+        const left = Math.ceil((endTime - Date.now()) / 1000);
+        const el   = document.getElementById('timerDisplay');
+        if (!el) { stopTimer(); return; }
+
+        if (left <= 0) {
+          stopTimer();
+          // Show results immediately without waiting for Firebase push
+          pollRef.once('value', s => renderResults(s.val()?.votes ?? {}));
+        } else {
+          el.textContent = left;
+          // Turn red + shake for last 10 seconds
+          const urgent = left <= 10;
+          if (urgent && !el.classList.contains('urgent')) el.classList.add('urgent');
+          if (!urgent &&  el.classList.contains('urgent')) el.classList.remove('urgent');
+        }
+      }, 500);
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       SCREEN 3 — RESULTS  (horizontal bar chart)
+    ═══════════════════════════════════════════════════════ */
+    function renderResults(votes) {
+      stopTimer();
+      renderedScreen = 'results';
+      renderedPollId = currentPollId;
+
+      const counts  = OPTIONS.map(o => votes[o] ?? 0);
+      const total   = counts.reduce((a, b) => a + b, 0);
+      const maxVote = Math.max(...counts, 1);   // avoid /0
+
+      setHTML(`
+        <div class="results">
+          <div class="results-title">📊 Poll Results</div>
+
+          ${OPTIONS.map((o, i) => {
+            const pct     = total   > 0 ? Math.round((counts[i] / total)   * 100) : 0;
+            const barPct  = Math.round((counts[i] / maxVote) * 100);   // relative to winner = 100%
+            return `
+              <div class="bar-row">
+                <span class="bar-label">${o}</span>
+                <div class="bar-track">
+                  <div class="bar-fill"  id="bar${o}" style="width:0%"></div>
+                  <span class="bar-pct"  id="pct${o}">${pct}%</span>
+                </div>
+                <span class="bar-count">${counts[i]}<br/>vote${counts[i] !== 1 ? 's' : ''}</span>
+              </div>`;
+          }).join('')}
+
+          <div class="total-line">Total responses: ${total}</div>
+        </div>`);
+
+      // ── Animate bars after first paint ────────────────
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        OPTIONS.forEach((o, i) => {
+          const barPct = Math.round((counts[i] / maxVote) * 100);
+          const el     = document.getElementById('bar' + o);
+          if (el) el.style.width = barPct + '%';
+        });
+      }));
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       CAST VOTE
+    ═══════════════════════════════════════════════════════ */
+    function castVote(option) {
+      // Fast local guard — no server round-trip needed
+      if (localStorage.getItem('votedPollId') === String(currentPollId)) {
+        showMsg('You have already voted!', 'info');
+        return;
+      }
+
+      // Re-read DB to verify poll is still live before committing
+      pollRef.once('value', snap => {
+        const data = snap.val();
+        if (!data) return;
+
+        if (Date.now() >= data.pollEndTime) {
+          showMsg('Poll has ended — too late!', 'error');
+          return;
+        }
+        if (localStorage.getItem('votedPollId') === String(data.pollId)) {
+          showMsg('You have already voted!', 'info');
+          return;
+        }
+
+        // Atomic increment — safe even with concurrent voters
+        db.ref(`poll/votes/${option}`).transaction(
+          current => (current ?? 0) + 1,
+          (err, committed) => {
+            if (err || !committed) {
+              showMsg('Something went wrong — please try again.', 'error');
+              return;
+            }
+
+            // Mark voted in localStorage (tied to this pollId)
+            localStorage.setItem('votedPollId', String(data.pollId));
+            localStorage.setItem('votedOption', option);
+
+            // Lock all buttons, highlight the chosen one
+            OPTIONS.forEach(o => {
+              const btn = document.getElementById('btn' + o);
+              if (!btn) return;
+              btn.disabled = true;
+              if (o === option) btn.classList.add('selected');
+            });
+
+            showMsg(`Voted  ${option}  ✓`, 'success');
+          }
+        );
+      });
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       RESET  (master only)
+    ═══════════════════════════════════════════════════════ */
+    function resetPoll() {
+      const btn = document.getElementById('resetBtn');
+      btn.disabled    = true;
+      btn.textContent = '⏳  Starting…';
+
+      const newPollId = (currentPollId ?? 0) + 1;
+
+      pollRef.set({
+        pollId:      newPollId,
+        pollEndTime: Date.now() + POLL_DURATION_MS,
+        votes:       { A: 0, B: 0, C: 0, D: 0 }
+      }).then(() => {
+        btn.disabled    = false;
+        btn.textContent = '🔄 Start New Poll';
+      }).catch(err => {
+        btn.disabled    = false;
+        btn.textContent = '🔄 Start New Poll';
+        alert('Reset failed: ' + err.message);
+      });
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       HELPERS
+    ═══════════════════════════════════════════════════════ */
+    function initDB() {
+      pollRef.set({ pollId: 0, pollEndTime: 0, votes: { A: 0, B: 0, C: 0, D: 0 } });
+    }
+
+    function stopTimer() {
+      if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+    }
+
+    function setHTML(html) {
+      document.getElementById('app').innerHTML = html;
+    }
+
+    function showMsg(text, type) {
+      const el = document.getElementById('msg');
+      if (!el) return;
+      el.textContent   = text;
+      el.className     = `msg ${type}`;
+      el.style.display = 'block';
+    }
+  </script>
+</body>
+</html>
