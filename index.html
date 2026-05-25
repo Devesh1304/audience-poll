@@ -299,7 +299,7 @@
   <header>
     <img src="kbc.png" alt="KBC" onerror="this.style.display='none'" />
     <h1>Audience Poll</h1>
-    <p>Jay Swaminarayan</p>
+    <p>Jay Swaminarayanan</p>
   </header>
 
   <!-- All screens render here -->
@@ -459,30 +459,41 @@ const firebaseConfig = {
     }
 
     /* ═══════════════════════════════════════════════════════
-       SCREEN 3 — RESULTS  (horizontal bar chart)
+       SCREEN 3 — RESULTS
+       Master  → full bar chart
+       Client  → simple confirmation message
     ═══════════════════════════════════════════════════════ */
     function renderResults(votes) {
       stopTimer();
       renderedScreen = 'results';
       renderedPollId = currentPollId;
 
+      if (isMaster) {
+        renderResultsChart(votes);
+      } else {
+        renderResultsClient();
+      }
+    }
+
+    // Master only — horizontal bar chart
+    function renderResultsChart(votes) {
       const counts  = OPTIONS.map(o => votes[o] ?? 0);
       const total   = counts.reduce((a, b) => a + b, 0);
-      const maxVote = Math.max(...counts, 1);   // avoid /0
+      const maxVote = Math.max(...counts, 1);
 
       setHTML(`
         <div class="results">
           <div class="results-title">📊 Poll Results</div>
 
           ${OPTIONS.map((o, i) => {
-            const pct     = total   > 0 ? Math.round((counts[i] / total)   * 100) : 0;
-            const barPct  = Math.round((counts[i] / maxVote) * 100);   // relative to winner = 100%
+            const pct    = total > 0 ? Math.round((counts[i] / total)   * 100) : 0;
+            const barPct = Math.round((counts[i] / maxVote) * 100);
             return `
               <div class="bar-row">
                 <span class="bar-label">${o}</span>
                 <div class="bar-track">
-                  <div class="bar-fill"  id="bar${o}" style="width:0%"></div>
-                  <span class="bar-pct"  id="pct${o}">${pct}%</span>
+                  <div class="bar-fill" id="bar${o}" style="width:0%"></div>
+                  <span class="bar-pct" id="pct${o}">${pct}%</span>
                 </div>
                 <span class="bar-count">${counts[i]}<br/>vote${counts[i] !== 1 ? 's' : ''}</span>
               </div>`;
@@ -491,14 +502,36 @@ const firebaseConfig = {
           <div class="total-line">Total responses: ${total}</div>
         </div>`);
 
-      // ── Animate bars after first paint ────────────────
+      // Animate bars after first paint
       requestAnimationFrame(() => requestAnimationFrame(() => {
         OPTIONS.forEach((o, i) => {
           const barPct = Math.round((counts[i] / maxVote) * 100);
-          const el     = document.getElementById('bar' + o);
+          const el = document.getElementById('bar' + o);
           if (el) el.style.width = barPct + '%';
         });
       }));
+    }
+
+    // Client only — simple thank-you screen
+    function renderResultsClient() {
+      const didVote     = localStorage.getItem('votedPollId') === String(currentPollId);
+      const votedOption = localStorage.getItem('votedOption');
+
+      if (didVote) {
+        setHTML(`
+          <div class="waiting">
+            <div class="icon">✅</div>
+            <h2>Response Submitted!</h2>
+            <p>Your vote for &nbsp;<strong style="color:#ffd700">${votedOption}</strong>&nbsp; has been recorded.</p>
+          </div>`);
+      } else {
+        setHTML(`
+          <div class="waiting">
+            <div class="icon">⏰</div>
+            <h2>Poll Ended</h2>
+            <p>Time's up — no response recorded.</p>
+          </div>`);
+      }
     }
 
     /* ═══════════════════════════════════════════════════════
